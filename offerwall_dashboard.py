@@ -1389,8 +1389,10 @@ def main():
         if st.session_state.selected_kpi in kpi_options:
             current_kpi_index = kpi_options.index(st.session_state.selected_kpi)
         
-        # KPI selector - use a callback approach to prevent tab reset
-        # Store previous value to detect changes
+        # KPI selector - use components.v1.html to preserve tab hash
+        import streamlit.components.v1 as components
+        
+        # Store previous value
         prev_kpi = st.session_state.get('selected_kpi', 'Avg Daily DAU')
         
         selected_kpi = st.selectbox(
@@ -1400,23 +1402,29 @@ def main():
             key="daily_trends_kpi_selector"
         )
         
-        # Only update if changed, and use JavaScript workaround if needed
+        # Update session state
+        st.session_state.selected_kpi = selected_kpi
+        
+        # If KPI changed, preserve tab hash using JavaScript
         if selected_kpi != prev_kpi:
-            st.session_state.selected_kpi = selected_kpi
-            # Use JavaScript to preserve tab hash (Streamlit tabs use #tab-1)
-            st.markdown("""
+            components.html("""
             <script>
-            // Preserve tab hash when KPI changes
-            if (window.location.hash) {
-                // Tab hash exists, keep it
-            } else if (window.location.href.includes('Daily')) {
-                // Try to restore tab-1 if we're on daily trends
-                window.location.hash = '#tab-1';
-            }
+            // Preserve the tab hash when KPI selector changes
+            (function() {
+                // Get current hash
+                var currentHash = window.location.hash;
+                // If we're on tab-1 (Daily Trends), preserve it
+                if (currentHash === '#tab-1' || currentHash === '') {
+                    // After a brief delay, restore the hash
+                    setTimeout(function() {
+                        if (window.location.hash !== '#tab-1') {
+                            window.location.hash = '#tab-1';
+                        }
+                    }, 100);
+                }
+            })();
             </script>
-            """, unsafe_allow_html=True)
-        else:
-            st.session_state.selected_kpi = selected_kpi
+            """, height=0)
         
         if dimension:
             # Split by dimension
