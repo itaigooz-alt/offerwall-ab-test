@@ -795,8 +795,24 @@ def create_kpis_comparison_table(df, test_start_date=None):
     # Get all KPIs in sorted order
     all_kpi_names = sorted(kpi_data.keys())
     
+    # Define which KPIs have "lower is better" (for win/loss determination)
+    # For most metrics, higher is better, but some like "Credits Spend per Player" might be lower is better
+    lower_is_better_kpis = ['Credits Spend per Player']  # Add more if needed
+    
     for kpi_name in all_kpi_names:
         kpi_info = kpi_data[kpi_name]
+        
+        # Determine if test is winning or losing (compare During values)
+        test_during = kpi_info.get('test', {}).get('During', 0)
+        control_during = kpi_info.get('control', {}).get('During', 0)
+        
+        # Determine win/loss indicator
+        if kpi_name in lower_is_better_kpis:
+            # For metrics where lower is better
+            is_winning = test_during < control_during if (test_during != 0 or control_during != 0) else None
+        else:
+            # For metrics where higher is better (most KPIs)
+            is_winning = test_during > control_during if (test_during != 0 or control_during != 0) else None
         
         # Add Test row
         if 'test' in kpi_info:
@@ -807,7 +823,8 @@ def create_kpis_comparison_table(df, test_start_date=None):
                 'Before': test_data['Before'],
                 'During': test_data['During'],
                 'Change': test_data['Change'],
-                'Change %': test_data['Change %']
+                'Change %': test_data['Change %'],
+                'Status': '🟢' if is_winning else ('🔴' if is_winning is False else '⚪')
             })
         
         # Add Control row
@@ -819,7 +836,8 @@ def create_kpis_comparison_table(df, test_start_date=None):
                 'Before': control_data['Before'],
                 'During': control_data['During'],
                 'Change': control_data['Change'],
-                'Change %': control_data['Change %']
+                'Change %': control_data['Change %'],
+                'Status': ''  # No status for control group
             })
     
     return pd.DataFrame(results)
@@ -1302,9 +1320,14 @@ def main():
                             else:
                                 display_table[col] = display_table[col].apply(lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x))
                     
-                    # Reorder columns: KPI first, then Test Group, then metrics
-                    column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
-                    display_table = display_table[column_order]
+                    # Reorder columns: KPI first, then Test Group, then metrics, then Status
+                    column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %', 'Status']
+                    # Only include Status if it exists
+                    if 'Status' in display_table.columns:
+                        display_table = display_table[column_order]
+                    else:
+                        column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
+                        display_table = display_table[column_order]
                     
                     st.dataframe(
                         display_table,
@@ -1327,9 +1350,14 @@ def main():
                         else:
                             display_table[col] = display_table[col].apply(lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x))
                 
-                # Reorder columns: KPI first, then Test Group, then metrics
-                column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
-                display_table = display_table[column_order]
+                # Reorder columns: KPI first, then Test Group, then metrics, then Status
+                column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %', 'Status']
+                # Only include Status if it exists
+                if 'Status' in display_table.columns:
+                    display_table = display_table[column_order]
+                else:
+                    column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
+                    display_table = display_table[column_order]
                 
                 st.dataframe(
                     display_table,
