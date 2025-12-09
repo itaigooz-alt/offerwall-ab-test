@@ -592,7 +592,12 @@ def load_data(_client, date_filter=None, test_group_filter=None, chapters_bucket
         
         if date_filter:
             if isinstance(date_filter, list) and len(date_filter) == 2:
+                # Date range
                 query += f" AND DATE(date) >= DATE('{date_filter[0]}') AND DATE(date) <= DATE('{date_filter[1]}')"
+            elif isinstance(date_filter, list) and len(date_filter) > 2:
+                # Multiple specific dates
+                date_list = ','.join([f"DATE('{d}')" for d in date_filter])
+                query += f" AND DATE(date) IN ({date_list})"
             elif isinstance(date_filter, str):
                 # Single date
                 query += f" AND DATE(date) = DATE('{date_filter}')"
@@ -820,7 +825,7 @@ def create_kpis_comparison_table(df, test_start_date=None):
     return pd.DataFrame(results)
 
 def calculate_daily_kpi(df, kpi_name):
-    """Calculate daily KPI value from daily aggregated row"""
+    """Calculate daily KPI value from daily aggregated row (sum if multiple rows per day)"""
     if len(df) == 0:
         return 0
     
@@ -835,16 +840,16 @@ def calculate_daily_kpi(df, kpi_name):
     spend_col = 'daily_generation_spend' if 'daily_generation_spend' in df.columns else ('generation_spend' if 'generation_spend' in df.columns else None)
     retention_col = 'is_returned_next_day' if 'is_returned_next_day' in df.columns else None
     
-    # For daily data, we calculate per-day metrics
-    dau = df[dau_col].iloc[0] if dau_col and dau_col in df.columns else 0
-    revenue = df[revenue_col].iloc[0] if revenue_col and revenue_col in df.columns else 0
-    paid_today = df[paid_col].iloc[0] if paid_col and paid_col in df.columns else 0
-    purchases = df[purchases_col].iloc[0] if purchases_col and purchases_col in df.columns else 0
-    chapters = df[chapters_col].iloc[0] if chapters_col and chapters_col in df.columns else 0
-    generation = df[generation_col].iloc[0] if generation_col and generation_col in df.columns else 0
-    merge = df[merge_col].iloc[0] if merge_col and merge_col in df.columns else 0
-    spend = df[spend_col].iloc[0] if spend_col and spend_col in df.columns else 0
-    returned = df[retention_col].iloc[0] if retention_col and retention_col in df.columns else 0
+    # For daily data, sum across all rows for the day (in case of multiple dimensions)
+    dau = df[dau_col].sum() if dau_col and dau_col in df.columns else 0
+    revenue = df[revenue_col].sum() if revenue_col and revenue_col in df.columns else 0
+    paid_today = df[paid_col].sum() if paid_col and paid_col in df.columns else 0
+    purchases = df[purchases_col].sum() if purchases_col and purchases_col in df.columns else 0
+    chapters = df[chapters_col].sum() if chapters_col and chapters_col in df.columns else 0
+    generation = df[generation_col].sum() if generation_col and generation_col in df.columns else 0
+    merge = df[merge_col].sum() if merge_col and merge_col in df.columns else 0
+    spend = df[spend_col].sum() if spend_col and spend_col in df.columns else 0
+    returned = df[retention_col].sum() if retention_col and retention_col in df.columns else 0
     
     # Map KPI names to calculations
     kpi_map = {
@@ -927,15 +932,43 @@ def create_daily_trends_chart(df, kpi_name, test_start_date=None):
     # Add vertical line at first "during" date
     if first_during_date is not None:
         try:
+            # Convert to string format that plotly expects
+            vline_date = first_during_date
+            if isinstance(vline_date, pd.Timestamp):
+                vline_date = vline_date.to_pydatetime()
+            
             fig.add_vline(
-                x=first_during_date,
+                x=vline_date,
                 line_dash="dot",
                 line_color="gray",
+                line_width=2,
                 annotation_text="Test Start",
-                annotation_position="top"
+                annotation_position="top",
+                annotation=dict(font_size=12, font_color="gray")
             )
-        except Exception:
-            pass
+        except Exception as e:
+            # Try alternative method
+            try:
+                fig.add_shape(
+                    type="line",
+                    x0=first_during_date,
+                    x1=first_during_date,
+                    y0=0,
+                    y1=1,
+                    yref="paper",
+                    line=dict(color="gray", width=2, dash="dot")
+                )
+                fig.add_annotation(
+                    x=first_during_date,
+                    y=1,
+                    yref="paper",
+                    text="Test Start",
+                    showarrow=False,
+                    xanchor="left",
+                    font=dict(size=12, color="gray")
+                )
+            except:
+                pass
     
     fig.update_layout(
         title=f'{kpi_name} - Daily Trends',
@@ -1000,40 +1033,47 @@ def main():
             test_group_filter=None
         )
     
-    # Date filter - dropdown
+    # Date filter - multiselect
     st.sidebar.markdown("#### Date Filter")
     if len(initial_df_for_dates) > 0 and 'date' in initial_df_for_dates.columns:
         # Get unique dates and sort them
         available_dates = sorted(initial_df_for_dates['date'].dropna().unique())
-        date_options = ['All Dates'] + [str(date.date()) if isinstance(date, pd.Timestamp) else str(date) for date in available_dates]
+        date_options = [str(date.date()) if isinstance(date, pd.Timestamp) else str(date) for date in available_dates]
         
         # Get current selection
-        current_selection = 'All Dates'
+        current_selection = []
         if st.session_state.filter_temp['date']:
-            if isinstance(st.session_state.filter_temp['date'], list) and len(st.session_state.filter_temp['date']) == 2:
-                # If it's a date range, show first date
-                current_selection = st.session_state.filter_temp['date'][0]
+            if isinstance(st.session_state.filter_temp['date'], list):
+                if len(st.session_state.filter_temp['date']) == 2:
+                    # If it's a date range, convert to list of dates in range
+                    try:
+                        start_date = pd.to_datetime(st.session_state.filter_temp['date'][0])
+                        end_date = pd.to_datetime(st.session_state.filter_temp['date'][1])
+                        date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+                        current_selection = [str(d.date()) for d in date_range if str(d.date()) in date_options]
+                    except:
+                        current_selection = [d for d in st.session_state.filter_temp['date'] if d in date_options]
+                else:
+                    current_selection = [d for d in st.session_state.filter_temp['date'] if d in date_options]
             elif isinstance(st.session_state.filter_temp['date'], str):
-                current_selection = st.session_state.filter_temp['date']
+                if st.session_state.filter_temp['date'] in date_options:
+                    current_selection = [st.session_state.filter_temp['date']]
         
-        # Find index of current selection
-        try:
-            default_index = date_options.index(current_selection) if current_selection in date_options else 0
-        except:
-            default_index = 0
-        
-        selected_date_str = st.sidebar.selectbox(
-            "Select Date",
+        selected_dates = st.sidebar.multiselect(
+            "Select Dates",
             options=date_options,
-            index=default_index,
-            key="date_dropdown_filter"
+            default=current_selection if current_selection else [],
+            key="date_multiselect_filter"
         )
         
-        if selected_date_str == 'All Dates':
+        if len(selected_dates) == 0:
             st.session_state.filter_temp['date'] = None
+        elif len(selected_dates) == 1:
+            # Single date as range
+            st.session_state.filter_temp['date'] = [selected_dates[0], selected_dates[0]]
         else:
-            # Set as date range (single date as both start and end)
-            st.session_state.filter_temp['date'] = [selected_date_str, selected_date_str]
+            # Multiple dates - store as list for IN query
+            st.session_state.filter_temp['date'] = selected_dates
     else:
         st.sidebar.info("No date data available")
         st.session_state.filter_temp['date'] = None
@@ -1052,14 +1092,20 @@ def main():
     # Load initial data to get filter options (use the dates we already loaded)
     initial_df = initial_df_for_dates.copy() if len(initial_df_for_dates) > 0 else pd.DataFrame()
     
-    # Apply date filter if set
+    # Apply date filter if set (handled in load_data query, but also filter here for consistency)
     if st.session_state.filter_temp['date'] and len(initial_df) > 0 and 'date' in initial_df.columns:
         date_filter = st.session_state.filter_temp['date']
-        if isinstance(date_filter, list) and len(date_filter) == 2:
-            initial_df = initial_df[
-                (initial_df['date'] >= pd.to_datetime(date_filter[0])) & 
-                (initial_df['date'] <= pd.to_datetime(date_filter[1]))
-            ]
+        if isinstance(date_filter, list):
+            if len(date_filter) == 2:
+                # Date range
+                initial_df = initial_df[
+                    (initial_df['date'] >= pd.to_datetime(date_filter[0])) & 
+                    (initial_df['date'] <= pd.to_datetime(date_filter[1]))
+                ]
+            elif len(date_filter) > 2:
+                # Multiple specific dates
+                date_list = [pd.to_datetime(d) for d in date_filter]
+                initial_df = initial_df[initial_df['date'].isin(date_list)]
     
     if len(initial_df) == 0:
         st.warning("No data found in the table. Please check your BigQuery connection and table.")
