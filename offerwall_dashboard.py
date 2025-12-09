@@ -1291,6 +1291,8 @@ def main():
         st.session_state.selected_kpi = 'Avg Daily DAU'
     
     # Create tabs for different views
+    # Note: Streamlit tabs use URL hash fragments (#tab-0, #tab-1) which should be preserved
+    # But sometimes widgets can reset them, so we'll use a workaround
     tab1, tab2 = st.tabs(["📊 Overall KPIs Comparison", "📈 Daily Trends Comparison"])
     
     # Tab 1: Overall KPIs Comparison
@@ -1387,16 +1389,33 @@ def main():
         if st.session_state.selected_kpi in kpi_options:
             current_kpi_index = kpi_options.index(st.session_state.selected_kpi)
         
-        # KPI selector - use a stable key to preserve tab state
+        # KPI selector - use a callback approach to prevent tab reset
+        # Store previous value to detect changes
+        prev_kpi = st.session_state.get('selected_kpi', 'Avg Daily DAU')
+        
         selected_kpi = st.selectbox(
             "Select KPI to View", 
             options=kpi_options, 
             index=current_kpi_index,
-            key="daily_trends_kpi_selector"  # Unique key to avoid conflicts
+            key="daily_trends_kpi_selector"
         )
         
-        # Update session state (this happens automatically with the key, but we'll sync it)
-        if selected_kpi != st.session_state.get('selected_kpi'):
+        # Only update if changed, and use JavaScript workaround if needed
+        if selected_kpi != prev_kpi:
+            st.session_state.selected_kpi = selected_kpi
+            # Use JavaScript to preserve tab hash (Streamlit tabs use #tab-1)
+            st.markdown("""
+            <script>
+            // Preserve tab hash when KPI changes
+            if (window.location.hash) {
+                // Tab hash exists, keep it
+            } else if (window.location.href.includes('Daily')) {
+                // Try to restore tab-1 if we're on daily trends
+                window.location.hash = '#tab-1';
+            }
+            </script>
+            """, unsafe_allow_html=True)
+        else:
             st.session_state.selected_kpi = selected_kpi
         
         if dimension:
