@@ -25,6 +25,219 @@ st.set_page_config(
 )
 
 # ============================================================================
+# CUSTOM CSS FOR MODERN UI/UX
+# ============================================================================
+
+def inject_custom_css():
+    """Inject custom CSS for modern UI/UX"""
+    st.markdown("""
+    <style>
+        /* Main theme colors */
+        :root {
+            --primary-color: #1f77b4;
+            --secondary-color: #ff7f0e;
+            --success-color: #2ca02c;
+            --danger-color: #d62728;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-primary: #1e1e1e;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+        }
+        
+        /* Main container styling */
+        .main .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        
+        /* Header styling */
+        h1 {
+            color: #1e1e1e;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        h2 {
+            color: #1e1e1e;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        h3 {
+            color: #1e1e1e;
+            font-weight: 600;
+            margin-top: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Sidebar styling */
+        .css-1d391kg {
+            background-color: #ffffff;
+        }
+        
+        [data-testid="stSidebar"] {
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+        }
+        
+        [data-testid="stSidebar"] .css-1d391kg {
+            background-color: #f8f9fa;
+        }
+        
+        /* Card-like containers */
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1.5rem;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            border-radius: 8px;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Selectbox and multiselect styling */
+        .stSelectbox > div > div {
+            border-radius: 8px;
+        }
+        
+        .stMultiSelect > div > div {
+            border-radius: 8px;
+        }
+        
+        /* Tab styling */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background-color: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 10px;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        /* Dataframe styling */
+        .dataframe {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Info boxes */
+        .stInfo {
+            border-radius: 8px;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .stWarning {
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .stSuccess {
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        /* Metric containers */
+        [data-testid="stMetricValue"] {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        [data-testid="stMetricLabel"] {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        /* Spacing improvements */
+        .element-container {
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Status indicators */
+        .status-green {
+            color: #28a745;
+            font-size: 1.2rem;
+        }
+        
+        .status-red {
+            color: #dc3545;
+            font-size: 1.2rem;
+        }
+        
+        .status-neutral {
+            color: #6c757d;
+            font-size: 1.2rem;
+        }
+        
+        /* Divider styling */
+        hr {
+            margin: 2rem 0;
+            border: none;
+            border-top: 2px solid #e9ecef;
+        }
+        
+        /* Sidebar section headers */
+        [data-testid="stSidebar"] h3 {
+            color: #495057;
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Filter section styling */
+        .filter-section {
+            background-color: #ffffff;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+        }
+        
+        /* Plotly chart container */
+        .js-plotly-plot {
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Loading spinner */
+        .stSpinner > div {
+            border-color: #667eea;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+# ============================================================================
 # GOOGLE OAUTH AUTHENTICATION
 # ============================================================================
 
@@ -1067,8 +1280,27 @@ def create_daily_trends_chart(df, kpi_name, test_start_date=None):
 
 def main():
     """Main dashboard function"""
-    st.title("🧪 Offerwall AB Test Dashboard")
-    st.markdown(f"**Data Source:** `{FULL_TABLE}`")
+    # Inject custom CSS
+    inject_custom_css()
+    
+    # Modern header with gradient
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 2rem; 
+                border-radius: 15px; 
+                margin-bottom: 2rem;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: 700;">
+            🧪 Offerwall AB Test Dashboard
+        </h1>
+        <p style="color: rgba(255, 255, 255, 0.9); margin: 0.5rem 0 0 0; font-size: 1.1rem;">
+            Analyze AB test performance and compare test vs control groups
+        </p>
+        <p style="color: rgba(255, 255, 255, 0.8); margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+            <strong>Data Source:</strong> {FULL_TABLE}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Show user info in sidebar
     if 'user_email' in st.session_state:
@@ -1114,6 +1346,19 @@ def main():
             date_filter=None,
             test_group_filter=None
         )
+    
+    # Sidebar: Modern header
+    st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1rem; 
+                border-radius: 10px; 
+                margin-bottom: 1.5rem;
+                text-align: center;">
+        <h3 style="color: white; margin: 0; font-size: 1.2rem;">
+            ⚙️ Dashboard Controls
+        </h3>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Dimension selector (moved above filters)
     if len(initial_df_for_dates) > 0:
@@ -1169,6 +1414,8 @@ def main():
         st.sidebar.info("'Period' column not found in data")
     
     # Sidebar filters
+    # Sidebar: Filters section with visual separator
+    st.sidebar.markdown("---")
     st.sidebar.markdown("### 🔍 Filters")
     
     # Date filter - multiselect
@@ -1280,15 +1527,16 @@ def main():
         st.sidebar.info("No first_mediasource data available")
         st.session_state.filter_temp['first_mediasource'] = []
     
-    # Apply/Reset buttons
+    # Apply/Reset buttons with modern styling
+    st.sidebar.markdown("---")
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        if st.button("✅ Apply", use_container_width=True):
+        if st.button("✅ Apply Filters", use_container_width=True, type="primary"):
             st.session_state.filter_applied = st.session_state.filter_temp.copy()
             st.rerun()
     
     with col2:
-        if st.button("🔄 Reset", use_container_width=True):
+        if st.button("🔄 Reset All", use_container_width=True):
             st.session_state.filter_temp = {
                 'date': None,
                 'test_group': test_group_options,
@@ -1323,11 +1571,37 @@ def main():
     if 'date' in df.columns:
         df['date'] = pd.to_datetime(df['date'])
     
-    st.sidebar.markdown("### 📈 Filtered Data")
+    # Sidebar: Data summary with modern cards
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 Data Summary")
     if len(df) > 0:
-        st.sidebar.metric("Total Rows", f"{len(df):,}")
+        st.sidebar.markdown(f"""
+        <div style="background-color: #e7f3ff; 
+                    padding: 1rem; 
+                    border-radius: 8px; 
+                    border-left: 4px solid #1f77b4;
+                    margin-bottom: 1rem;">
+            <p style="margin: 0; font-weight: 600; color: #1e1e1e;">Total Rows</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 1.5rem; color: #1f77b4; font-weight: 700;">
+                {len(df):,}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         if 'date' in df.columns:
-            st.sidebar.metric("Date Range", f"{df['date'].min().date()} to {df['date'].max().date()}")
+            date_min = df['date'].min().date()
+            date_max = df['date'].max().date()
+            st.sidebar.markdown(f"""
+            <div style="background-color: #fff3cd; 
+                        padding: 1rem; 
+                        border-radius: 8px; 
+                        border-left: 4px solid #ffc107;">
+                <p style="margin: 0; font-weight: 600; color: #1e1e1e;">Date Range</p>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #856404;">
+                    {date_min} to {date_max}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
     
     # Get dimension from session state (set earlier)
     if 'selected_dimension' in st.session_state:
@@ -1363,9 +1637,35 @@ def main():
     
     # Tab 1: Overall KPIs Comparison
     with tab1:
-        st.markdown("### 📊 Overall KPIs Comparison (Before vs During Test)")
+        # Modern section header
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+                    padding: 1.5rem; 
+                    border-radius: 10px; 
+                    margin-bottom: 2rem;
+                    border-left: 5px solid #667eea;">
+            <h2 style="margin: 0; color: #1e1e1e; font-size: 1.5rem;">
+                📊 Overall KPIs Comparison
+            </h2>
+            <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
+                Compare test vs control groups: Before vs During test period
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # KPI filter - multiselect dropdown
+        # KPI filter - multiselect dropdown in a card
+        st.markdown("""
+        <div style="background-color: #ffffff; 
+                    padding: 1rem; 
+                    border-radius: 8px; 
+                    margin-bottom: 1.5rem;
+                    border: 1px solid #dee2e6;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+            <h4 style="margin: 0 0 0.75rem 0; color: #495057; font-weight: 600;">
+                🎯 Select KPIs to Display
+            </h4>
+        </div>
+        """, unsafe_allow_html=True)
         all_kpi_options = [
             'Avg Daily DAU',
             'Avg Daily Revenue',
@@ -1386,10 +1686,11 @@ def main():
             st.session_state.selected_kpis_overall = all_kpi_options
         
         selected_kpis = st.multiselect(
-            "Select KPIs to Display",
+            "Choose KPIs",
             options=all_kpi_options,
             default=st.session_state.selected_kpis_overall,
-            key="kpi_multiselect_overall"
+            key="kpi_multiselect_overall",
+            label_visibility="collapsed"
         )
         
         # Update session state
@@ -1433,10 +1734,17 @@ def main():
                         column_order = [col for col in column_order if col in display_table.columns]
                         display_table = display_table[column_order]
                     
+                    # Modern table display with styling
+                    st.markdown("""
+                    <div style="margin-top: 1.5rem;">
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     st.dataframe(
                         display_table,
                         use_container_width=True,
-                        hide_index=True
+                        hide_index=True,
+                        height=400
                     )
                 else:
                     st.info(f"No data available for {dimension} = {dim_value}")
@@ -1479,8 +1787,36 @@ def main():
     
     # Tab 2: Daily Trends Comparison
     with tab2:
-        st.markdown("### 📈 Daily Trends Comparison (Before vs During Test)")
+        # Modern section header
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
+                    padding: 1.5rem; 
+                    border-radius: 10px; 
+                    margin-bottom: 2rem;
+                    border-left: 5px solid #667eea;">
+            <h2 style="margin: 0; color: #1e1e1e; font-size: 1.5rem;">
+                📈 Daily Trends Comparison
+            </h2>
+            <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
+                Track daily performance trends for test vs control groups
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
+        # KPI selector in a card
+        st.markdown("""
+        <div style="background-color: #ffffff; 
+                    padding: 1rem; 
+                    border-radius: 8px; 
+                    margin-bottom: 1.5rem;
+                    border: 1px solid #dee2e6;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+            <h4 style="margin: 0 0 0.75rem 0; color: #495057; font-weight: 600;">
+                📊 Select KPI to View
+            </h4>
+        </div>
+        """, unsafe_allow_html=True)
+
         # KPI selector - use session state to preserve selection
         kpi_options = [
             'Avg Daily DAU',
@@ -1505,8 +1841,9 @@ def main():
         # KPI selector - use unique key and ensure it doesn't conflict
         # The key helps Streamlit track the widget state across reruns
         selected_kpi = st.selectbox(
-            "Select KPI to View", 
-            options=kpi_options, 
+            "Choose KPI",
+            options=kpi_options,
+            label_visibility="collapsed", 
             index=current_kpi_index,
             key="daily_trends_kpi_selector"
         )
