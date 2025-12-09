@@ -1286,17 +1286,12 @@ def main():
         st.warning("No data matches the selected filters. Please adjust your filters.")
         return
     
-    # Initialize tab state
-    if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = 0
+    # Initialize KPI selection in session state (before tabs to preserve across reruns)
+    if 'selected_kpi' not in st.session_state:
+        st.session_state.selected_kpi = 'Avg Daily DAU'
     
     # Create tabs for different views
     tab1, tab2 = st.tabs(["📊 Overall KPIs Comparison", "📈 Daily Trends Comparison"])
-    
-    # Track tab selection using query params (Streamlit tabs use URL hash)
-    # We'll use a workaround: store KPI selection in session state before tabs
-    if 'selected_kpi' not in st.session_state:
-        st.session_state.selected_kpi = 'Avg Daily DAU'
     
     # Tab 1: Overall KPIs Comparison
     with tab1:
@@ -1392,15 +1387,17 @@ def main():
         if st.session_state.selected_kpi in kpi_options:
             current_kpi_index = kpi_options.index(st.session_state.selected_kpi)
         
+        # KPI selector - use a stable key to preserve tab state
         selected_kpi = st.selectbox(
             "Select KPI to View", 
             options=kpi_options, 
             index=current_kpi_index,
-            key="kpi_selector"
+            key="daily_trends_kpi_selector"  # Unique key to avoid conflicts
         )
         
-        # Update session state
-        st.session_state.selected_kpi = selected_kpi
+        # Update session state (this happens automatically with the key, but we'll sync it)
+        if selected_kpi != st.session_state.get('selected_kpi'):
+            st.session_state.selected_kpi = selected_kpi
         
         if dimension:
             # Split by dimension
