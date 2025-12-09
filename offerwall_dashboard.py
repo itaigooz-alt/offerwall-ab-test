@@ -1022,16 +1022,69 @@ def main():
     if 'filter_temp' not in st.session_state:
         st.session_state.filter_temp = st.session_state.filter_applied.copy()
     
-    # Sidebar filters
-    st.sidebar.markdown("### 🔍 Filters")
-    
-    # Load initial data to get available dates
+    # Load initial data first (needed for Dimension Selector and Test Period)
     with st.spinner("Loading data from BigQuery..."):
         initial_df_for_dates = load_data(
             client,
             date_filter=None,
             test_group_filter=None
         )
+    
+    # Dimension selector (moved above filters)
+    if len(initial_df_for_dates) > 0:
+        st.sidebar.markdown("### 🔀 Dimension Selector")
+        st.sidebar.markdown("Select one dimension to split views by:")
+        
+        dimension_options = {
+            'None': None,
+            'Chapters Bucket': 'chapters_bucket',
+            'First Mediasource': 'first_mediasource'
+        }
+        
+        # Initialize dimension in session state if not exists
+        if 'selected_dimension' not in st.session_state:
+            st.session_state.selected_dimension = 'None'
+        
+        # Get current index
+        current_dim_index = 0
+        if st.session_state.selected_dimension in dimension_options:
+            current_dim_index = list(dimension_options.keys()).index(st.session_state.selected_dimension)
+        
+        selected_dimension = st.sidebar.selectbox(
+            "Dimension",
+            options=list(dimension_options.keys()),
+            index=current_dim_index,
+            key="dimension_selector"
+        )
+        
+        st.session_state.selected_dimension = selected_dimension
+        dimension = dimension_options[selected_dimension]
+        
+        # Check if dimension is valid
+        if dimension and dimension not in initial_df_for_dates.columns:
+            original_dim = dimension
+            dimension = None
+            st.sidebar.warning(f"Dimension '{original_dim}' not available in data")
+    else:
+        dimension = None
+    
+    # Test Period (moved above filters)
+    if len(initial_df_for_dates) > 0 and 'Period' in initial_df_for_dates.columns:
+        # Determine test start date from Period column
+        during_dates = initial_df_for_dates[initial_df_for_dates['Period'].str.lower() == 'during']['date'].dropna()
+        if len(during_dates) > 0:
+            test_start_date_sidebar = pd.to_datetime(during_dates.min())
+            st.sidebar.markdown("### 📅 Test Period")
+            st.sidebar.info(f"**Test Start**: {test_start_date_sidebar.strftime('%Y-%m-%d')}")
+        else:
+            st.sidebar.markdown("### 📅 Test Period")
+            st.sidebar.info("Using 'Period' column from data")
+    elif len(initial_df_for_dates) > 0:
+        st.sidebar.markdown("### 📅 Test Period")
+        st.sidebar.info("'Period' column not found in data")
+    
+    # Sidebar filters
+    st.sidebar.markdown("### 🔍 Filters")
     
     # Date filter - multiselect
     st.sidebar.markdown("#### Date Filter")
@@ -1191,45 +1244,24 @@ def main():
         if 'date' in df.columns:
             st.sidebar.metric("Date Range", f"{df['date'].min().date()} to {df['date'].max().date()}")
     
-    # Dimension selector
-    st.sidebar.markdown("### 🔀 Dimension Selector")
-    st.sidebar.markdown("Select one dimension to split views by:")
-    
-    dimension_options = {
-        'None': None,
-        'Chapters Bucket': 'chapters_bucket',
-        'First Mediasource': 'first_mediasource'
-    }
-    
-    selected_dimension = st.sidebar.selectbox(
-        "Dimension",
-        options=list(dimension_options.keys()),
-        index=0
-    )
-    
-    dimension = dimension_options[selected_dimension]
-    
-    # Check if dimension is valid
-    if dimension and dimension not in df.columns:
-        original_dim = dimension
+    # Get dimension from session state (set earlier)
+    if 'selected_dimension' in st.session_state:
+        dimension_options_map = {
+            'None': None,
+            'Chapters Bucket': 'chapters_bucket',
+            'First Mediasource': 'first_mediasource'
+        }
+        dimension = dimension_options_map.get(st.session_state.selected_dimension, None)
+    else:
         dimension = None
-        st.sidebar.warning(f"Dimension '{original_dim}' not available in data")
     
-    # Determine test start date from Period column
+    # Determine test start date from Period column (for use in charts)
     test_start_date = None
     if 'Period' in df.columns and len(df) > 0:
         # Get the first "during" date
         during_dates = df[df['Period'].str.lower() == 'during']['date'].dropna()
         if len(during_dates) > 0:
             test_start_date = pd.to_datetime(during_dates.min())
-    
-    # Display test start date info
-    if test_start_date:
-        st.sidebar.markdown("### 📅 Test Period")
-        st.sidebar.info(f"**Test Start**: {test_start_date.strftime('%Y-%m-%d')}")
-    elif 'Period' in df.columns:
-        st.sidebar.markdown("### 📅 Test Period")
-        st.sidebar.info("Using 'Period' column from data")
     
     # Main content area
     if len(df) == 0:
