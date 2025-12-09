@@ -1290,9 +1290,19 @@ def main():
     if 'selected_kpi' not in st.session_state:
         st.session_state.selected_kpi = 'Avg Daily DAU'
     
+    # Track active tab using query params to preserve across widget changes
+    query_params = st.query_params
+    active_tab = query_params.get('tab', None)
+    
+    # If no tab in query params, check URL hash or default to 0
+    # Streamlit tabs use hash fragments, but we'll also track in query params
+    if active_tab is None:
+        # Try to infer from URL or default
+        active_tab = ['0']  # Default to first tab
+    elif not isinstance(active_tab, list):
+        active_tab = [active_tab]
+    
     # Create tabs for different views
-    # Note: Streamlit tabs use URL hash fragments (#tab-0, #tab-1) which should be preserved
-    # But sometimes widgets can reset them, so we'll use a workaround
     tab1, tab2 = st.tabs(["📊 Overall KPIs Comparison", "📈 Daily Trends Comparison"])
     
     # Tab 1: Overall KPIs Comparison
@@ -1389,12 +1399,7 @@ def main():
         if st.session_state.selected_kpi in kpi_options:
             current_kpi_index = kpi_options.index(st.session_state.selected_kpi)
         
-        # KPI selector - use components.v1.html to preserve tab hash
-        import streamlit.components.v1 as components
-        
-        # Store previous value
-        prev_kpi = st.session_state.get('selected_kpi', 'Avg Daily DAU')
-        
+        # KPI selector - preserve tab by setting query param
         selected_kpi = st.selectbox(
             "Select KPI to View", 
             options=kpi_options, 
@@ -1405,26 +1410,9 @@ def main():
         # Update session state
         st.session_state.selected_kpi = selected_kpi
         
-        # If KPI changed, preserve tab hash using JavaScript
-        if selected_kpi != prev_kpi:
-            components.html("""
-            <script>
-            // Preserve the tab hash when KPI selector changes
-            (function() {
-                // Get current hash
-                var currentHash = window.location.hash;
-                // If we're on tab-1 (Daily Trends), preserve it
-                if (currentHash === '#tab-1' || currentHash === '') {
-                    // After a brief delay, restore the hash
-                    setTimeout(function() {
-                        if (window.location.hash !== '#tab-1') {
-                            window.location.hash = '#tab-1';
-                        }
-                    }, 100);
-                }
-            })();
-            </script>
-            """, height=0)
+        # Set query param to preserve tab (tab-1 = Daily Trends)
+        if 'tab' not in st.query_params or st.query_params.get('tab') != '1':
+            st.query_params['tab'] = '1'
         
         if dimension:
             # Split by dimension
