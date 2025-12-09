@@ -768,8 +768,8 @@ def create_kpis_comparison_table(df, test_start_date=None):
     if not isinstance(test_start_date, pd.Timestamp):
         test_start_date = pd.to_datetime(test_start_date)
     
-    # Split data by test group and period
-    results = []
+    # Calculate KPIs for each test group, then reorganize by KPI
+    kpi_data = {}
     
     for test_group in ['test', 'control']:
         group_df = df[df['test_group'] == test_group].copy()
@@ -790,19 +790,53 @@ def create_kpis_comparison_table(df, test_start_date=None):
         # Get all unique KPI names from both periods
         all_kpis = set(before_kpis.keys()) | set(during_kpis.keys())
         
-        for kpi_name in sorted(all_kpis):
+        for kpi_name in all_kpis:
+            if kpi_name not in kpi_data:
+                kpi_data[kpi_name] = {}
+            
             before_value = before_kpis.get(kpi_name, 0)
             during_value = during_kpis.get(kpi_name, 0)
             change = during_value - before_value
             change_pct = (change / before_value * 100) if before_value != 0 else (0 if during_value == 0 else float('inf'))
             
-            results.append({
-                'Test Group': test_group.title(),
-                'KPI': kpi_name,
+            kpi_data[kpi_name][test_group] = {
                 'Before': before_value,
                 'During': during_value,
                 'Change': change,
                 'Change %': change_pct if change_pct != float('inf') else 0
+            }
+    
+    # Reorganize data: Group by KPI first, then split by test/control
+    results = []
+    
+    # Get all KPIs in sorted order
+    all_kpi_names = sorted(kpi_data.keys())
+    
+    for kpi_name in all_kpi_names:
+        kpi_info = kpi_data[kpi_name]
+        
+        # Add Test row
+        if 'test' in kpi_info:
+            test_data = kpi_info['test']
+            results.append({
+                'KPI': kpi_name,
+                'Test Group': 'Test',
+                'Before': test_data['Before'],
+                'During': test_data['During'],
+                'Change': test_data['Change'],
+                'Change %': test_data['Change %']
+            })
+        
+        # Add Control row
+        if 'control' in kpi_info:
+            control_data = kpi_info['control']
+            results.append({
+                'KPI': kpi_name,
+                'Test Group': 'Control',
+                'Before': control_data['Before'],
+                'During': control_data['During'],
+                'Change': control_data['Change'],
+                'Change %': control_data['Change %']
             })
     
     return pd.DataFrame(results)
@@ -1198,6 +1232,10 @@ def main():
                             else:
                                 display_table[col] = display_table[col].apply(lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x))
                     
+                    # Reorder columns: KPI first, then Test Group, then metrics
+                    column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
+                    display_table = display_table[column_order]
+                    
                     st.dataframe(
                         display_table,
                         use_container_width=True,
@@ -1218,6 +1256,10 @@ def main():
                             display_table[col] = display_table[col].apply(lambda x: f"{x:.2f}%" if isinstance(x, (int, float)) else str(x))
                         else:
                             display_table[col] = display_table[col].apply(lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x))
+                
+                # Reorder columns: KPI first, then Test Group, then metrics
+                column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
+                display_table = display_table[column_order]
                 
                 st.dataframe(
                     display_table,
