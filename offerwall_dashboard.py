@@ -44,23 +44,57 @@ def check_authorization(email):
 
 def get_google_oauth_url():
     """Get Google OAuth URL for authentication"""
+    # Get OAuth config from secrets or environment
     client_id = None
     client_secret = None
     
+    # Try to get from secrets (TOML format) - multiple methods
     if hasattr(st, 'secrets'):
         try:
+            # Method 1: Direct access at top level
             if 'GOOGLE_OAUTH_CLIENT_ID' in st.secrets:
                 client_id = st.secrets['GOOGLE_OAUTH_CLIENT_ID']
+            # Method 2: get() method at top level
             elif hasattr(st.secrets, 'get'):
                 client_id = st.secrets.get('GOOGLE_OAUTH_CLIENT_ID')
-            
+            # Method 3: Check inside GOOGLE_APPLICATION_CREDENTIALS_JSON (if nested)
+            if not client_id and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                # Handle both dict and AttrDict (Streamlit's dict-like type)
+                try:
+                    if hasattr(creds_json, 'get'):
+                        client_id = creds_json.get('GOOGLE_OAUTH_CLIENT_ID')
+                    elif hasattr(creds_json, '__getitem__'):
+                        if 'GOOGLE_OAUTH_CLIENT_ID' in creds_json:
+                            client_id = creds_json['GOOGLE_OAUTH_CLIENT_ID']
+                except:
+                    pass
+        except (KeyError, AttributeError, TypeError):
+            pass
+        
+        try:
+            # Method 1: Direct access at top level
             if 'GOOGLE_OAUTH_CLIENT_SECRET' in st.secrets:
                 client_secret = st.secrets['GOOGLE_OAUTH_CLIENT_SECRET']
+            # Method 2: get() method at top level
             elif hasattr(st.secrets, 'get'):
                 client_secret = st.secrets.get('GOOGLE_OAUTH_CLIENT_SECRET')
+            # Method 3: Check inside GOOGLE_APPLICATION_CREDENTIALS_JSON (if nested)
+            if not client_secret and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                # Handle both dict and AttrDict (Streamlit's dict-like type)
+                try:
+                    if hasattr(creds_json, 'get'):
+                        client_secret = creds_json.get('GOOGLE_OAUTH_CLIENT_SECRET')
+                    elif hasattr(creds_json, '__getitem__'):
+                        if 'GOOGLE_OAUTH_CLIENT_SECRET' in creds_json:
+                            client_secret = creds_json['GOOGLE_OAUTH_CLIENT_SECRET']
+                except:
+                    pass
         except (KeyError, AttributeError, TypeError):
             pass
     
+    # Fallback to environment variables
     if not client_id:
         client_id = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
     if not client_secret:
@@ -69,18 +103,44 @@ def get_google_oauth_url():
     if not client_id or not client_secret:
         return None
     
+    # Get redirect URI from secrets or environment
     redirect_uri = None
     if hasattr(st, 'secrets'):
         try:
+            # Method 1: Direct access at top level
             if 'STREAMLIT_REDIRECT_URI' in st.secrets:
                 redirect_uri = st.secrets['STREAMLIT_REDIRECT_URI']
+            # Method 2: get() method at top level
             elif hasattr(st.secrets, 'get'):
                 redirect_uri = st.secrets.get('STREAMLIT_REDIRECT_URI')
+            # Method 3: Check inside GOOGLE_APPLICATION_CREDENTIALS_JSON (if nested)
+            if not redirect_uri and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                # Handle both dict and AttrDict (Streamlit's dict-like type)
+                try:
+                    if hasattr(creds_json, 'get'):
+                        redirect_uri = creds_json.get('STREAMLIT_REDIRECT_URI')
+                    elif hasattr(creds_json, '__getitem__'):
+                        if 'STREAMLIT_REDIRECT_URI' in creds_json:
+                            redirect_uri = creds_json['STREAMLIT_REDIRECT_URI']
+                except:
+                    pass
         except (KeyError, AttributeError, TypeError):
             pass
     
     if not redirect_uri:
-        redirect_uri = os.environ.get('STREAMLIT_REDIRECT_URI', "https://offerwall-ab-test.streamlit.app/")
+        redirect_uri = os.environ.get('STREAMLIT_REDIRECT_URI')
+    
+    if not redirect_uri:
+        # Default fallback - try to get from Streamlit's URL
+        try:
+            # Try to get current URL from Streamlit
+            if hasattr(st, 'server'):
+                redirect_uri = f"https://{st.server.serverAddress}/"
+            else:
+                redirect_uri = "https://offerwall-ab-test.streamlit.app/"
+        except:
+            redirect_uri = "https://offerwall-ab-test.streamlit.app/"
     
     flow = Flow.from_client_config(
         {
@@ -104,8 +164,75 @@ def get_google_oauth_url():
     
     return authorization_url
 
+def is_oauth_configured():
+    """Check if OAuth credentials are configured"""
+    client_id = None
+    client_secret = None
+    
+    # Try to get from secrets (TOML format) - multiple methods
+    if hasattr(st, 'secrets'):
+        try:
+            # Method 1: Direct access at top level
+            if 'GOOGLE_OAUTH_CLIENT_ID' in st.secrets:
+                client_id = st.secrets['GOOGLE_OAUTH_CLIENT_ID']
+            # Method 2: get() method at top level
+            elif hasattr(st.secrets, 'get'):
+                client_id = st.secrets.get('GOOGLE_OAUTH_CLIENT_ID')
+            # Method 3: Check inside GOOGLE_APPLICATION_CREDENTIALS_JSON (if nested)
+            if not client_id and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                try:
+                    if hasattr(creds_json, 'get'):
+                        client_id = creds_json.get('GOOGLE_OAUTH_CLIENT_ID')
+                    elif hasattr(creds_json, '__getitem__'):
+                        if 'GOOGLE_OAUTH_CLIENT_ID' in creds_json:
+                            client_id = creds_json['GOOGLE_OAUTH_CLIENT_ID']
+                except:
+                    pass
+        except (KeyError, AttributeError, TypeError):
+            pass
+        
+        try:
+            # Method 1: Direct access at top level
+            if 'GOOGLE_OAUTH_CLIENT_SECRET' in st.secrets:
+                client_secret = st.secrets['GOOGLE_OAUTH_CLIENT_SECRET']
+            # Method 2: get() method at top level
+            elif hasattr(st.secrets, 'get'):
+                client_secret = st.secrets.get('GOOGLE_OAUTH_CLIENT_SECRET')
+            # Method 3: Check inside GOOGLE_APPLICATION_CREDENTIALS_JSON (if nested)
+            if not client_secret and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                try:
+                    if hasattr(creds_json, 'get'):
+                        client_secret = creds_json.get('GOOGLE_OAUTH_CLIENT_SECRET')
+                    elif hasattr(creds_json, '__getitem__'):
+                        if 'GOOGLE_OAUTH_CLIENT_SECRET' in creds_json:
+                            client_secret = creds_json['GOOGLE_OAUTH_CLIENT_SECRET']
+                except:
+                    pass
+        except (KeyError, AttributeError, TypeError):
+            pass
+    
+    # Fallback to environment variables
+    if not client_id:
+        client_id = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
+    if not client_secret:
+        client_secret = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
+    
+    return client_id is not None and client_secret is not None
+
 def authenticate_user():
-    """Authenticate user with Google OAuth"""
+    """Authenticate user with Google OAuth (optional)"""
+    # Check if OAuth is configured
+    if not is_oauth_configured():
+        # OAuth not configured - skip authentication
+        if 'authenticated' not in st.session_state:
+            st.session_state.authenticated = True
+            st.session_state.user_email = "public-user@streamlit.app"
+            st.session_state.user_name = "Public User"
+        return st.session_state.user_email
+    
+    # OAuth is configured - proceed with authentication
     if 'authenticated' in st.session_state and st.session_state.authenticated:
         if 'user_email' in st.session_state:
             return st.session_state.user_email
@@ -119,44 +246,97 @@ def authenticate_user():
             client_id = None
             client_secret = None
             
+            # Try to get from secrets first, then environment
+            client_id = None
+            client_secret = None
+            
             if hasattr(st, 'secrets'):
                 try:
+                    # Try top level first
                     if 'GOOGLE_OAUTH_CLIENT_ID' in st.secrets:
                         client_id = st.secrets['GOOGLE_OAUTH_CLIENT_ID']
                     elif hasattr(st.secrets, 'get'):
                         client_id = st.secrets.get('GOOGLE_OAUTH_CLIENT_ID')
-                except (KeyError, AttributeError, TypeError):
+                    # If not found, check inside GOOGLE_APPLICATION_CREDENTIALS_JSON
+                    if not client_id and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                        creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                        try:
+                            if hasattr(creds_json, 'get'):
+                                client_id = creds_json.get('GOOGLE_OAUTH_CLIENT_ID')
+                            elif hasattr(creds_json, '__getitem__'):
+                                if 'GOOGLE_OAUTH_CLIENT_ID' in creds_json:
+                                    client_id = creds_json['GOOGLE_OAUTH_CLIENT_ID']
+                        except:
+                            pass
+                except:
                     pass
                 
                 try:
+                    # Try top level first
                     if 'GOOGLE_OAUTH_CLIENT_SECRET' in st.secrets:
                         client_secret = st.secrets['GOOGLE_OAUTH_CLIENT_SECRET']
                     elif hasattr(st.secrets, 'get'):
                         client_secret = st.secrets.get('GOOGLE_OAUTH_CLIENT_SECRET')
-                except (KeyError, AttributeError, TypeError):
+                    # If not found, check inside GOOGLE_APPLICATION_CREDENTIALS_JSON
+                    if not client_secret and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                        creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                        try:
+                            if hasattr(creds_json, 'get'):
+                                client_secret = creds_json.get('GOOGLE_OAUTH_CLIENT_SECRET')
+                            elif hasattr(creds_json, '__getitem__'):
+                                if 'GOOGLE_OAUTH_CLIENT_SECRET' in creds_json:
+                                    client_secret = creds_json['GOOGLE_OAUTH_CLIENT_SECRET']
+                        except:
+                            pass
+                except:
                     pass
             
+            # Fallback to environment
             if not client_id:
                 client_id = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
             if not client_secret:
                 client_secret = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
             
             if not client_id or not client_secret:
-                st.error("OAuth credentials not configured")
+                st.error("OAuth configuration missing. Please contact administrator.")
                 return None
             
+            # Get redirect URI - same as in get_google_oauth_url
             redirect_uri = None
             if hasattr(st, 'secrets'):
                 try:
+                    # Method 1: Direct access at top level
                     if 'STREAMLIT_REDIRECT_URI' in st.secrets:
                         redirect_uri = st.secrets['STREAMLIT_REDIRECT_URI']
+                    # Method 2: get() method at top level
                     elif hasattr(st.secrets, 'get'):
                         redirect_uri = st.secrets.get('STREAMLIT_REDIRECT_URI')
+                    # Method 3: Check inside GOOGLE_APPLICATION_CREDENTIALS_JSON (if nested)
+                    if not redirect_uri and 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in st.secrets:
+                        creds_json = st.secrets['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+                        try:
+                            if hasattr(creds_json, 'get'):
+                                redirect_uri = creds_json.get('STREAMLIT_REDIRECT_URI')
+                            elif hasattr(creds_json, '__getitem__'):
+                                if 'STREAMLIT_REDIRECT_URI' in creds_json:
+                                    redirect_uri = creds_json['STREAMLIT_REDIRECT_URI']
+                        except:
+                            pass
                 except (KeyError, AttributeError, TypeError):
                     pass
             
             if not redirect_uri:
-                redirect_uri = os.environ.get('STREAMLIT_REDIRECT_URI', "https://offerwall-ab-test.streamlit.app/")
+                redirect_uri = os.environ.get('STREAMLIT_REDIRECT_URI')
+            
+            if not redirect_uri:
+                # Default fallback - try to get from Streamlit's URL
+                try:
+                    if hasattr(st, 'server'):
+                        redirect_uri = f"https://{st.server.serverAddress}/"
+                    else:
+                        redirect_uri = "https://offerwall-ab-test.streamlit.app/"
+                except:
+                    redirect_uri = "https://offerwall-ab-test.streamlit.app/"
             
             flow = Flow.from_client_config(
                 {
@@ -201,18 +381,66 @@ def authenticate_user():
             st.error(f"Authentication error: {e}")
             return None
     
-    # Show login page
-    st.title("🔐 Authentication Required")
-    st.markdown("Please sign in with your Google account to access the Offerwall AB Test Dashboard.")
-    
-    auth_url = get_google_oauth_url()
-    if auth_url:
-        st.markdown(f"[**Click here to sign in with Google**]({auth_url})")
+    # Show login page (only if OAuth is configured)
+    if is_oauth_configured():
+        st.title("🔐 Authentication Required")
+        st.markdown("Please sign in with your Google account to access the Offerwall AB Test Dashboard.")
+        
+        auth_url = get_google_oauth_url()
+        if auth_url:
+            st.markdown(f"[**Click here to sign in with Google**]({auth_url})")
+        else:
+            st.error("OAuth configuration error. Please check your OAuth credentials.")
+            st.markdown("### Debug Information")
+            st.markdown("""
+            **Troubleshooting Steps:**
+            1. Check that `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` are in Streamlit Cloud secrets
+            2. Verify secrets are at the top level (not inside a table)
+            3. Make sure you clicked "Save" and "Reboot app" after adding secrets
+            4. Check that the redirect URI in Google Cloud Console matches your Streamlit app URL
+            """)
+        
+        st.stop()
+        return None
     else:
-        st.error("OAuth configuration not found. Please configure GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET.")
-    
-    st.stop()
-    return None
+        # OAuth not configured - show helpful message
+        st.title("🔐 Authentication Setup Required")
+        st.warning("OAuth credentials are not configured. The dashboard will work without authentication, but it's recommended to set up OAuth for security.")
+        
+        st.markdown("### Setup Instructions")
+        st.markdown("""
+        To enable Google OAuth authentication:
+        
+        1. **Create Google OAuth credentials**:
+           - Go to: https://console.cloud.google.com/apis/credentials?project=yotam-395120
+           - Create OAuth 2.0 Client ID (Web application)
+           - Add authorized redirect URI: Your Streamlit app URL (e.g., `https://offerwall-ab-test-6v7uq4xgov7ep6uzxntqvj.streamlit.app/`)
+        
+        2. **Add to Streamlit Cloud Secrets**:
+           - Go to your app settings in Streamlit Cloud
+           - Click "Secrets" tab
+           - Add these secrets at the **top level** (not inside a table):
+             ```toml
+             GOOGLE_OAUTH_CLIENT_ID = "your-client-id.apps.googleusercontent.com"
+             GOOGLE_OAUTH_CLIENT_SECRET = "your-client-secret"
+             STREAMLIT_REDIRECT_URI = "https://your-app-url.streamlit.app/"
+             ```
+        
+        3. **Save and Reboot** the app in Streamlit Cloud
+        
+        **Note**: Make sure the redirect URI in Google Cloud Console **exactly matches** your Streamlit app URL (including the trailing slash).
+        """)
+        
+        # Allow bypass for now
+        if st.button("Continue Without Authentication (Not Recommended)"):
+            if 'authenticated' not in st.session_state:
+                st.session_state.authenticated = True
+                st.session_state.user_email = "public-user@streamlit.app"
+                st.session_state.user_name = "Public User"
+            st.rerun()
+        
+        st.stop()
+        return None
 
 # Authenticate user before showing dashboard
 SKIP_AUTH = os.environ.get('SKIP_AUTH', 'false').lower() == 'true'
