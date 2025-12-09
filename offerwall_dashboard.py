@@ -813,40 +813,42 @@ def create_kpis_comparison_table(df, test_start_date=None):
         control_change_pct = control_data.get('Change %', 0)
         
         # Determine win/loss indicator
-        # Compare change percentages: if both dropping, test wins if it dropped less
-        # If both increasing, test wins if it increased more
-        # If one dropping and one increasing, compare based on metric type
+        # Priority: Compare change percentages when both groups changed in same direction
+        # This ensures we correctly identify winners even when both are dropping/increasing
         
         if kpi_name in lower_is_better_kpis:
             # For metrics where lower is better (e.g., Credits Spend per Player)
-            # Test wins if: test_during < control_during OR (both dropping and test dropped less)
-            if test_during < control_during:
-                is_winning = True
-            elif test_during > control_during:
-                is_winning = False
+            # First check if both changed in same direction
+            if test_change_pct < 0 and control_change_pct < 0:
+                # Both dropping: test wins if it dropped less (smaller negative = better)
+                is_winning = test_change_pct > control_change_pct
+            elif test_change_pct > 0 and control_change_pct > 0:
+                # Both increasing: test wins if it increased less (smaller positive = better for lower-is-better)
+                is_winning = test_change_pct < control_change_pct
             else:
-                # Equal values, compare change
-                # If both dropping, test wins if it dropped less (smaller negative change)
-                if test_change_pct < 0 and control_change_pct < 0:
-                    is_winning = test_change_pct > control_change_pct  # Less negative = better
-                elif test_change_pct > 0 and control_change_pct > 0:
-                    is_winning = test_change_pct < control_change_pct  # Smaller increase = better (for lower is better)
+                # Different directions or one unchanged: compare absolute During values
+                if test_during < control_during:
+                    is_winning = True
+                elif test_during > control_during:
+                    is_winning = False
                 else:
                     is_winning = None
         else:
             # For metrics where higher is better (most KPIs)
-            # Test wins if: test_during > control_during OR (both dropping and test dropped less)
-            if test_during > control_during:
-                is_winning = True
-            elif test_during < control_during:
-                is_winning = False
+            # First check if both changed in same direction
+            if test_change_pct < 0 and control_change_pct < 0:
+                # Both dropping: test wins if it dropped less (smaller negative = better)
+                # Example: Test -27% vs Control -32% → Test wins (less negative)
+                is_winning = test_change_pct > control_change_pct
+            elif test_change_pct > 0 and control_change_pct > 0:
+                # Both increasing: test wins if it increased more (larger positive = better)
+                is_winning = test_change_pct > control_change_pct
             else:
-                # Equal values, compare change
-                # If both dropping, test wins if it dropped less (smaller negative change = less bad)
-                if test_change_pct < 0 and control_change_pct < 0:
-                    is_winning = test_change_pct > control_change_pct  # Less negative = better
-                elif test_change_pct > 0 and control_change_pct > 0:
-                    is_winning = test_change_pct > control_change_pct  # Larger increase = better
+                # Different directions or one unchanged: compare absolute During values
+                if test_during > control_during:
+                    is_winning = True
+                elif test_during < control_during:
+                    is_winning = False
                 else:
                     is_winning = None
         
