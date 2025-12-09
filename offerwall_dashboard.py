@@ -793,8 +793,31 @@ def create_kpis_comparison_table(df, test_start_date=None):
     # Reorganize data: Group by KPI first, then split by test/control
     results = []
     
-    # Get all KPIs in sorted order
-    all_kpi_names = sorted(kpi_data.keys())
+    # Define KPI order (custom order as specified)
+    kpi_order = [
+        'Avg Daily DAU',
+        'Avg Daily Revenue',
+        'ARPUDAU',
+        '%PU/DAU',
+        'ARPPU',
+        'ATV',
+        'Transactions per Payer',
+        'DOD Retention',
+        'Chapters per Player',
+        'Credits Spend per Player',
+        'Generations per Player',
+        'Merges per Player'
+    ]
+    
+    # Get all KPIs in the specified order
+    all_kpi_names = []
+    # First add KPIs in the specified order
+    for kpi in kpi_order:
+        if kpi in kpi_data:
+            all_kpi_names.append(kpi)
+    # Then add any remaining KPIs not in the list (sorted)
+    remaining_kpis = sorted([k for k in kpi_data.keys() if k not in kpi_order])
+    all_kpi_names.extend(remaining_kpis)
     
     # Define which KPIs have "lower is better" (for win/loss determination)
     # For most metrics, higher is better, but some like "Credits Spend per Player" might be lower is better
@@ -852,6 +875,11 @@ def create_kpis_comparison_table(df, test_start_date=None):
                 else:
                     is_winning = None
         
+        # Calculate diff between test and control change %
+        test_change_pct = test_data.get('Change %', 0) if 'test' in kpi_info else 0
+        control_change_pct = control_data.get('Change %', 0) if 'control' in kpi_info else 0
+        diff_change_pct = test_change_pct - control_change_pct
+        
         # Add Test row
         if 'test' in kpi_info:
             test_data = kpi_info['test']
@@ -862,6 +890,7 @@ def create_kpis_comparison_table(df, test_start_date=None):
                 'During': test_data['During'],
                 'Change': test_data['Change'],
                 'Change %': test_data['Change %'],
+                'Diff (Test-Control)': diff_change_pct,
                 'Status': '🟢' if is_winning else ('🔴' if is_winning is False else '⚪')
             })
         
@@ -875,6 +904,7 @@ def create_kpis_comparison_table(df, test_start_date=None):
                 'During': control_data['During'],
                 'Change': control_data['Change'],
                 'Change %': control_data['Change %'],
+                'Diff (Test-Control)': '',  # Empty for control row
                 'Status': ''  # No status for control group
             })
     
@@ -1336,6 +1366,41 @@ def main():
     with tab1:
         st.markdown("### 📊 Overall KPIs Comparison (Before vs During Test)")
         
+        # KPI filter - multiselect dropdown
+        all_kpi_options = [
+            'Avg Daily DAU',
+            'Avg Daily Revenue',
+            'ARPUDAU',
+            '%PU/DAU',
+            'ARPPU',
+            'ATV',
+            'Transactions per Payer',
+            'DOD Retention',
+            'Chapters per Player',
+            'Credits Spend per Player',
+            'Generations per Player',
+            'Merges per Player'
+        ]
+        
+        # Initialize selected KPIs in session state
+        if 'selected_kpis_overall' not in st.session_state:
+            st.session_state.selected_kpis_overall = all_kpi_options
+        
+        selected_kpis = st.multiselect(
+            "Select KPIs to Display",
+            options=all_kpi_options,
+            default=st.session_state.selected_kpis_overall,
+            key="kpi_multiselect_overall"
+        )
+        
+        # Update session state
+        if len(selected_kpis) > 0:
+            st.session_state.selected_kpis_overall = selected_kpis
+        else:
+            # If nothing selected, show all
+            st.session_state.selected_kpis_overall = all_kpi_options
+            selected_kpis = all_kpi_options
+        
         if dimension:
             # Split by dimension
             for dim_value in sorted(df[dimension].dropna().unique()):
@@ -1344,23 +1409,29 @@ def main():
                 
                 comparison_table = create_kpis_comparison_table(dim_df, test_start_date)
                 if len(comparison_table) > 0:
-                    # Format numeric columns for better display
-                    display_table = comparison_table.copy()
-                    numeric_cols = ['Before', 'During', 'Change', 'Change %']
-                    for col in numeric_cols:
-                        if col in display_table.columns:
-                            if col == 'Change %':
-                                display_table[col] = display_table[col].apply(lambda x: f"{x:.2f}%" if isinstance(x, (int, float)) else str(x))
-                            else:
-                                display_table[col] = display_table[col].apply(lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x))
+                    # Filter by selected KPIs
+                    if selected_kpis:
+                        comparison_table = comparison_table[comparison_table['KPI'].isin(selected_kpis)]
                     
-                    # Reorder columns: KPI first, then Test Group, then metrics, then Status
-                    column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %', 'Status']
-                    # Only include Status if it exists
-                    if 'Status' in display_table.columns:
-                        display_table = display_table[column_order]
-                    else:
-                        column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
+                    if len(comparison_table) > 0:
+                        # Format numeric columns for better display
+                        display_table = comparison_table.copy()
+                        numeric_cols = ['Before', 'During', 'Change', 'Change %', 'Diff (Test-Control)']
+                        for col in numeric_cols:
+                            if col in display_table.columns:
+                                if col == 'Change %' or col == 'Diff (Test-Control)':
+                                    display_table[col] = display_table[col].apply(
+                                        lambda x: f"{x:.2f}%" if isinstance(x, (int, float)) else str(x)
+                                    )
+                                else:
+                                    display_table[col] = display_table[col].apply(
+                                        lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x)
+                                    )
+                        
+                        # Reorder columns: KPI first, then Test Group, then metrics, then Status
+                        column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %', 'Diff (Test-Control)', 'Status']
+                        # Only include columns that exist
+                        column_order = [col for col in column_order if col in display_table.columns]
                         display_table = display_table[column_order]
                     
                     st.dataframe(
@@ -1374,23 +1445,29 @@ def main():
             # Show aggregated view
             comparison_table = create_kpis_comparison_table(df, test_start_date)
             if len(comparison_table) > 0:
-                # Format numeric columns for better display
-                display_table = comparison_table.copy()
-                numeric_cols = ['Before', 'During', 'Change', 'Change %']
-                for col in numeric_cols:
-                    if col in display_table.columns:
-                        if col == 'Change %':
-                            display_table[col] = display_table[col].apply(lambda x: f"{x:.2f}%" if isinstance(x, (int, float)) else str(x))
-                        else:
-                            display_table[col] = display_table[col].apply(lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x))
+                # Filter by selected KPIs
+                if selected_kpis:
+                    comparison_table = comparison_table[comparison_table['KPI'].isin(selected_kpis)]
                 
-                # Reorder columns: KPI first, then Test Group, then metrics, then Status
-                column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %', 'Status']
-                # Only include Status if it exists
-                if 'Status' in display_table.columns:
-                    display_table = display_table[column_order]
-                else:
-                    column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %']
+                if len(comparison_table) > 0:
+                    # Format numeric columns for better display
+                    display_table = comparison_table.copy()
+                    numeric_cols = ['Before', 'During', 'Change', 'Change %', 'Diff (Test-Control)']
+                    for col in numeric_cols:
+                        if col in display_table.columns:
+                            if col == 'Change %' or col == 'Diff (Test-Control)':
+                                display_table[col] = display_table[col].apply(
+                                    lambda x: f"{x:.2f}%" if isinstance(x, (int, float)) else str(x)
+                                )
+                            else:
+                                display_table[col] = display_table[col].apply(
+                                    lambda x: f"{x:,.2f}" if isinstance(x, (int, float)) else str(x)
+                                )
+                    
+                    # Reorder columns: KPI first, then Test Group, then metrics, then Status
+                    column_order = ['KPI', 'Test Group', 'Before', 'During', 'Change', 'Change %', 'Diff (Test-Control)', 'Status']
+                    # Only include columns that exist
+                    column_order = [col for col in column_order if col in display_table.columns]
                     display_table = display_table[column_order]
                 
                 st.dataframe(
