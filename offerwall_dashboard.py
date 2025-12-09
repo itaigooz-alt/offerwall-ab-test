@@ -211,8 +211,21 @@ def inject_custom_css():
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-top: 1.5rem;
+            margin-top: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Reduce spacing in sidebar */
+        [data-testid="stSidebar"] .element-container {
             margin-bottom: 0.75rem;
+        }
+        
+        [data-testid="stSidebar"] .stMarkdown {
+            margin-bottom: 0.5rem;
+        }
+        
+        [data-testid="stSidebar"] hr {
+            margin: 0.75rem 0;
         }
         
         /* Filter section styling */
@@ -1313,6 +1326,7 @@ def main():
                 if key.startswith('authenticated') or key.startswith('user_'):
                     del st.session_state[key]
             st.rerun()
+        st.sidebar.markdown("<br>", unsafe_allow_html=True)  # Small spacer
     
     # Initialize BigQuery client
     client = get_bigquery_client()
@@ -1350,11 +1364,11 @@ def main():
     # Sidebar: Modern header
     st.sidebar.markdown("""
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                padding: 1rem; 
+                padding: 0.75rem; 
                 border-radius: 10px; 
-                margin-bottom: 1.5rem;
+                margin-bottom: 0.75rem;
                 text-align: center;">
-        <h3 style="color: white; margin: 0; font-size: 1.2rem;">
+        <h3 style="color: white; margin: 0; font-size: 1.1rem;">
             ⚙️ Dashboard Controls
         </h3>
     </div>
@@ -1363,7 +1377,7 @@ def main():
     # Dimension selector (moved above filters)
     if len(initial_df_for_dates) > 0:
         st.sidebar.markdown("### 🔀 Dimension Selector")
-        st.sidebar.markdown("Select one dimension to split views by:")
+        st.sidebar.markdown("<small>Select one dimension to split views by:</small>", unsafe_allow_html=True)
         
         dimension_options = {
             'None': None,
@@ -1415,7 +1429,7 @@ def main():
     
     # Sidebar filters
     # Sidebar: Filters section with visual separator
-    st.sidebar.markdown("---")
+    st.sidebar.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
     st.sidebar.markdown("### 🔍 Filters")
     
     # Date filter - multiselect
@@ -1572,17 +1586,17 @@ def main():
         df['date'] = pd.to_datetime(df['date'])
     
     # Sidebar: Data summary with modern cards
-    st.sidebar.markdown("---")
+    st.sidebar.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
     st.sidebar.markdown("### 📊 Data Summary")
     if len(df) > 0:
         st.sidebar.markdown(f"""
         <div style="background-color: #e7f3ff; 
-                    padding: 1rem; 
+                    padding: 0.75rem; 
                     border-radius: 8px; 
                     border-left: 4px solid #1f77b4;
-                    margin-bottom: 1rem;">
-            <p style="margin: 0; font-weight: 600; color: #1e1e1e;">Total Rows</p>
-            <p style="margin: 0.5rem 0 0 0; font-size: 1.5rem; color: #1f77b4; font-weight: 700;">
+                    margin-bottom: 0.5rem;">
+            <p style="margin: 0; font-weight: 600; color: #1e1e1e; font-size: 0.9rem;">Total Rows</p>
+            <p style="margin: 0.25rem 0 0 0; font-size: 1.3rem; color: #1f77b4; font-weight: 700;">
                 {len(df):,}
             </p>
         </div>
@@ -1593,11 +1607,11 @@ def main():
             date_max = df['date'].max().date()
             st.sidebar.markdown(f"""
             <div style="background-color: #fff3cd; 
-                        padding: 1rem; 
+                        padding: 0.75rem; 
                         border-radius: 8px; 
                         border-left: 4px solid #ffc107;">
-                <p style="margin: 0; font-weight: 600; color: #1e1e1e;">Date Range</p>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #856404;">
+                <p style="margin: 0; font-weight: 600; color: #1e1e1e; font-size: 0.9rem;">Date Range</p>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #856404;">
                     {date_min} to {date_max}
                 </p>
             </div>
