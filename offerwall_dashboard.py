@@ -876,8 +876,7 @@ def create_kpis_comparison_table(df, test_start_date=None):
                     is_winning = None
         
         # Calculate diff between test and control change %
-        test_change_pct = test_data.get('Change %', 0) if 'test' in kpi_info else 0
-        control_change_pct = control_data.get('Change %', 0) if 'control' in kpi_info else 0
+        # (test_change_pct and control_change_pct are already defined above)
         diff_change_pct = test_change_pct - control_change_pct
         
         # Add Test row
