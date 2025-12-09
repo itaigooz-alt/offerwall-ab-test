@@ -736,7 +736,7 @@ def calculate_kpis(df, period='all'):
     }
 
 def create_kpis_comparison_table(df, test_start_date=None):
-    """Create comparison table of KPIs before vs during test"""
+    """Create comparison table of KPIs before vs during test using Period column"""
     if len(df) == 0:
         return pd.DataFrame()
     
@@ -744,29 +744,10 @@ def create_kpis_comparison_table(df, test_start_date=None):
     if 'date' in df.columns:
         df['date'] = pd.to_datetime(df['date'])
     
-    # Determine test start date
-    if test_start_date is None:
-        # Try to infer from data - look for a date column that might indicate test start
-        if 'test_start_date' in df.columns and len(df) > 0:
-            test_start_dates = df['test_start_date'].dropna()
-            if len(test_start_dates) > 0:
-                test_start_date = pd.to_datetime(test_start_dates.iloc[0])
-        elif 'date' in df.columns and len(df) > 0:
-            # Use median date as proxy if not available
-            test_start_date = pd.to_datetime(df['date'].median())
-        else:
-            test_start_date = None
-    
-    if test_start_date is None:
-        # If still no date, use max date to put all in "before"
-        if 'date' in df.columns and len(df) > 0:
-            test_start_date = pd.to_datetime(df['date'].max()) + timedelta(days=1)
-        else:
-            return pd.DataFrame()
-    
-    # Ensure test_start_date is datetime
-    if not isinstance(test_start_date, pd.Timestamp):
-        test_start_date = pd.to_datetime(test_start_date)
+    # Check if Period column exists
+    if 'Period' not in df.columns:
+        st.warning("'Period' column not found in data. Cannot determine before/during periods.")
+        return pd.DataFrame()
     
     # Calculate KPIs for each test group, then reorganize by KPI
     kpi_data = {}
@@ -777,15 +758,12 @@ def create_kpis_comparison_table(df, test_start_date=None):
         if len(group_df) == 0:
             continue
         
-        # Ensure date column is datetime
-        if 'date' in group_df.columns:
-            group_df['date'] = pd.to_datetime(group_df['date'])
+        # Split by Period column
+        before_df = group_df[group_df['Period'].str.lower() == 'before'].copy() if 'Period' in group_df.columns else pd.DataFrame()
+        during_df = group_df[group_df['Period'].str.lower() == 'during'].copy() if 'Period' in group_df.columns else pd.DataFrame()
         
-        before_df = group_df[group_df['date'] < test_start_date].copy()
-        during_df = group_df[group_df['date'] >= test_start_date].copy()
-        
-        before_kpis = calculate_kpis(before_df, period='before')
-        during_kpis = calculate_kpis(during_df, period='during')
+        before_kpis = calculate_kpis(before_df, period='all')
+        during_kpis = calculate_kpis(during_df, period='all')
         
         # Get all unique KPI names from both periods
         all_kpis = set(before_kpis.keys()) | set(during_kpis.keys())
@@ -887,7 +865,7 @@ def calculate_daily_kpi(df, kpi_name):
     return kpi_map.get(kpi_name, 0)
 
 def create_daily_trends_chart(df, kpi_name, test_start_date=None):
-    """Create daily trends line chart for a specific KPI"""
+    """Create daily trends line chart for a specific KPI using Period column"""
     if len(df) == 0:
         return None
     
@@ -895,20 +873,14 @@ def create_daily_trends_chart(df, kpi_name, test_start_date=None):
     if 'date' in df.columns:
         df['date'] = pd.to_datetime(df['date'])
     
-    # Determine test start date
-    if test_start_date is None:
-        if 'test_start_date' in df.columns and len(df) > 0:
-            test_start_dates = df['test_start_date'].dropna()
-            if len(test_start_dates) > 0:
-                test_start_date = pd.to_datetime(test_start_dates.iloc[0])
-        elif 'date' in df.columns and len(df) > 0:
-            test_start_date = pd.to_datetime(df['date'].median())
-        else:
-            test_start_date = None
+    # Check if Period column exists
+    if 'Period' not in df.columns:
+        st.warning("'Period' column not found in data. Cannot create trends chart.")
+        return None
     
-    # Ensure test_start_date is datetime if provided
-    if test_start_date and not isinstance(test_start_date, pd.Timestamp):
-        test_start_date = pd.to_datetime(test_start_date)
+    # Find the first "during" date for the vertical line
+    during_dates = df[df['Period'].str.lower() == 'during']['date'].dropna()
+    first_during_date = pd.to_datetime(during_dates.min()) if len(during_dates) > 0 else None
     
     # Calculate daily KPI values
     daily_data = []
@@ -923,14 +895,9 @@ def create_daily_trends_chart(df, kpi_name, test_start_date=None):
             day_df = group_df[group_df['date'] == date]
             value = calculate_daily_kpi(day_df, kpi_name)
             
-            # Ensure date is datetime for comparison
-            date_dt = pd.to_datetime(date) if not isinstance(date, pd.Timestamp) else date
-            period = 'during' if test_start_date and date_dt >= test_start_date else 'before'
-            
             daily_data.append({
                 'date': date,
                 'test_group': test_group,
-                'period': period,
                 'value': value
             })
     
@@ -939,38 +906,35 @@ def create_daily_trends_chart(df, kpi_name, test_start_date=None):
     
     trend_df = pd.DataFrame(daily_data)
     
-    # Create line chart
+    # Create line chart with only 2 lines (Test and Control)
     fig = go.Figure()
     
     for test_group in ['test', 'control']:
-        for period in ['before', 'during']:
-            group_period_df = trend_df[(trend_df['test_group'] == test_group) & (trend_df['period'] == period)]
+        group_df = trend_df[trend_df['test_group'] == test_group]
+        
+        if len(group_df) > 0:
+            line_color = 'blue' if test_group == 'test' else 'red'
             
-            if len(group_period_df) > 0:
-                line_style = 'solid' if period == 'during' else 'dash'
-                line_color = 'blue' if test_group == 'test' else 'red'
-                opacity = 1.0 if period == 'during' else 0.6
-                
-                fig.add_trace(go.Scatter(
-                    x=group_period_df['date'],
-                    y=group_period_df['value'],
-                    mode='lines+markers',
-                    name=f'{test_group.title()} - {period.title()}',
-                    line=dict(dash=line_style, color=line_color),
-                    opacity=opacity
-                ))
+            fig.add_trace(go.Scatter(
+                x=group_df['date'],
+                y=group_df['value'],
+                mode='lines+markers',
+                name=test_group.title(),
+                line=dict(color=line_color),
+                opacity=1.0
+            ))
     
-    if test_start_date:
+    # Add vertical line at first "during" date
+    if first_during_date is not None:
         try:
             fig.add_vline(
-                x=test_start_date,
+                x=first_during_date,
                 line_dash="dot",
                 line_color="gray",
                 annotation_text="Test Start",
                 annotation_position="top"
             )
         except Exception:
-            # If vline fails, try adding as annotation
             pass
     
     fig.update_layout(
@@ -1205,21 +1169,21 @@ def main():
         dimension = None
         st.sidebar.warning(f"Dimension '{original_dim}' not available in data")
     
-    # Determine test start date (consistent across all groups)
+    # Determine test start date from Period column
     test_start_date = None
-    if 'test_start_date' in df.columns and len(df) > 0:
-        # Get the first non-null test_start_date
-        test_start_dates = df['test_start_date'].dropna()
-        if len(test_start_dates) > 0:
-            test_start_date = pd.to_datetime(test_start_dates.iloc[0])
-    elif len(df) > 0 and 'date' in df.columns:
-        # Use median date as proxy if test_start_date not available
-        test_start_date = pd.to_datetime(df['date'].median())
+    if 'Period' in df.columns and len(df) > 0:
+        # Get the first "during" date
+        during_dates = df[df['Period'].str.lower() == 'during']['date'].dropna()
+        if len(during_dates) > 0:
+            test_start_date = pd.to_datetime(during_dates.min())
     
     # Display test start date info
     if test_start_date:
         st.sidebar.markdown("### 📅 Test Period")
         st.sidebar.info(f"**Test Start**: {test_start_date.strftime('%Y-%m-%d')}")
+    elif 'Period' in df.columns:
+        st.sidebar.markdown("### 📅 Test Period")
+        st.sidebar.info("Using 'Period' column from data")
     
     # Main content area
     if len(df) == 0:
