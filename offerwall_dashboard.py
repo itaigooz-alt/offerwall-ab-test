@@ -803,17 +803,52 @@ def create_kpis_comparison_table(df, test_start_date=None):
     for kpi_name in all_kpi_names:
         kpi_info = kpi_data[kpi_name]
         
-        # Determine if test is winning or losing (compare During values)
-        test_during = kpi_info.get('test', {}).get('During', 0)
-        control_during = kpi_info.get('control', {}).get('During', 0)
+        # Get test and control data
+        test_data = kpi_info.get('test', {})
+        control_data = kpi_info.get('control', {})
+        
+        test_during = test_data.get('During', 0)
+        control_during = control_data.get('During', 0)
+        test_change_pct = test_data.get('Change %', 0)
+        control_change_pct = control_data.get('Change %', 0)
         
         # Determine win/loss indicator
+        # Compare change percentages: if both dropping, test wins if it dropped less
+        # If both increasing, test wins if it increased more
+        # If one dropping and one increasing, compare based on metric type
+        
         if kpi_name in lower_is_better_kpis:
-            # For metrics where lower is better
-            is_winning = test_during < control_during if (test_during != 0 or control_during != 0) else None
+            # For metrics where lower is better (e.g., Credits Spend per Player)
+            # Test wins if: test_during < control_during OR (both dropping and test dropped less)
+            if test_during < control_during:
+                is_winning = True
+            elif test_during > control_during:
+                is_winning = False
+            else:
+                # Equal values, compare change
+                # If both dropping, test wins if it dropped less (smaller negative change)
+                if test_change_pct < 0 and control_change_pct < 0:
+                    is_winning = test_change_pct > control_change_pct  # Less negative = better
+                elif test_change_pct > 0 and control_change_pct > 0:
+                    is_winning = test_change_pct < control_change_pct  # Smaller increase = better (for lower is better)
+                else:
+                    is_winning = None
         else:
             # For metrics where higher is better (most KPIs)
-            is_winning = test_during > control_during if (test_during != 0 or control_during != 0) else None
+            # Test wins if: test_during > control_during OR (both dropping and test dropped less)
+            if test_during > control_during:
+                is_winning = True
+            elif test_during < control_during:
+                is_winning = False
+            else:
+                # Equal values, compare change
+                # If both dropping, test wins if it dropped less (smaller negative change = less bad)
+                if test_change_pct < 0 and control_change_pct < 0:
+                    is_winning = test_change_pct > control_change_pct  # Less negative = better
+                elif test_change_pct > 0 and control_change_pct > 0:
+                    is_winning = test_change_pct > control_change_pct  # Larger increase = better
+                else:
+                    is_winning = None
         
         # Add Test row
         if 'test' in kpi_info:
