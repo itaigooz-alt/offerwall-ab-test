@@ -851,16 +851,11 @@ def calculate_daily_kpi(df, kpi_name):
     if len(df) == 0:
         return 0
     
-    # Get column names (handle variations)
+    # Get column names (exact names from table)
     dau_col = 'dau' if 'dau' in df.columns else None
-    revenue_col = 'total_revenue' if 'total_revenue' in df.columns else ('revenue' if 'revenue' in df.columns else None)
-    # Try multiple variations for paid users column
-    paid_col = None
-    for col_name in ['paid_today', 'paid_users', 'paying_users', 'num_paid', 'paid_count', 'total_paid', 'paid']:
-        if col_name in df.columns:
-            paid_col = col_name
-            break
-    purchases_col = 'total_purchases' if 'total_purchases' in df.columns else ('purchases' if 'purchases' in df.columns else None)
+    revenue_col = 'revenue' if 'revenue' in df.columns else None
+    paid_col = 'payers' if 'payers' in df.columns else None
+    purchases_col = 'purchases' if 'purchases' in df.columns else None
     chapters_col = 'chapters_completed' if 'chapters_completed' in df.columns else None
     generation_col = 'daily_generation' if 'daily_generation' in df.columns else ('generation' if 'generation' in df.columns else None)
     merge_col = 'daily_merge' if 'daily_merge' in df.columns else ('merge' if 'merge' in df.columns else None)
