@@ -685,7 +685,12 @@ def calculate_kpis(df, period='all'):
     # Get column names (handle variations)
     dau_col = 'dau' if 'dau' in df.columns else None
     revenue_col = 'total_revenue' if 'total_revenue' in df.columns else ('revenue' if 'revenue' in df.columns else None)
-    paid_col = 'paid_today' if 'paid_today' in df.columns else None
+    # Try multiple variations for paid users column
+    paid_col = None
+    for col_name in ['paid_today', 'paid_users', 'paying_users', 'num_paid', 'paid_count', 'total_paid', 'paid']:
+        if col_name in df.columns:
+            paid_col = col_name
+            break
     purchases_col = 'total_purchases' if 'total_purchases' in df.columns else ('purchases' if 'purchases' in df.columns else None)
     chapters_col = 'chapters_completed' if 'chapters_completed' in df.columns else None
     generation_col = 'daily_generation' if 'daily_generation' in df.columns else ('generation' if 'generation' in df.columns else None)
@@ -849,7 +854,12 @@ def calculate_daily_kpi(df, kpi_name):
     # Get column names (handle variations)
     dau_col = 'dau' if 'dau' in df.columns else None
     revenue_col = 'total_revenue' if 'total_revenue' in df.columns else ('revenue' if 'revenue' in df.columns else None)
-    paid_col = 'paid_today' if 'paid_today' in df.columns else None
+    # Try multiple variations for paid users column
+    paid_col = None
+    for col_name in ['paid_today', 'paid_users', 'paying_users', 'num_paid', 'paid_count', 'total_paid', 'paid']:
+        if col_name in df.columns:
+            paid_col = col_name
+            break
     purchases_col = 'total_purchases' if 'total_purchases' in df.columns else ('purchases' if 'purchases' in df.columns else None)
     chapters_col = 'chapters_completed' if 'chapters_completed' in df.columns else None
     generation_col = 'daily_generation' if 'daily_generation' in df.columns else ('generation' if 'generation' in df.columns else None)
@@ -1028,35 +1038,50 @@ def main():
     # Sidebar filters
     st.sidebar.markdown("### 🔍 Filters")
     
-    # Date filter
-    st.sidebar.markdown("#### Date Range")
-    use_date_filter = st.sidebar.checkbox("Filter by Date", value=st.session_state.filter_temp['date'] is not None)
+    # Load initial data to get available dates
+    with st.spinner("Loading data from BigQuery..."):
+        initial_df_for_dates = load_data(
+            client,
+            date_filter=None,
+            test_group_filter=None
+        )
     
-    if use_date_filter:
-        # Handle date range input
-        default_start = datetime.now() - timedelta(days=30)
-        default_end = datetime.now()
+    # Date filter - dropdown
+    st.sidebar.markdown("#### Date Filter")
+    if len(initial_df_for_dates) > 0 and 'date' in initial_df_for_dates.columns:
+        # Get unique dates and sort them
+        available_dates = sorted(initial_df_for_dates['date'].dropna().unique())
+        date_options = ['All Dates'] + [str(date.date()) if isinstance(date, pd.Timestamp) else str(date) for date in available_dates]
         
-        if st.session_state.filter_temp['date'] and isinstance(st.session_state.filter_temp['date'], list) and len(st.session_state.filter_temp['date']) == 2:
-            try:
-                default_start = datetime.strptime(st.session_state.filter_temp['date'][0], '%Y-%m-%d')
-                default_end = datetime.strptime(st.session_state.filter_temp['date'][1], '%Y-%m-%d')
-            except (ValueError, TypeError):
-                pass
+        # Get current selection
+        current_selection = 'All Dates'
+        if st.session_state.filter_temp['date']:
+            if isinstance(st.session_state.filter_temp['date'], list) and len(st.session_state.filter_temp['date']) == 2:
+                # If it's a date range, show first date
+                current_selection = st.session_state.filter_temp['date'][0]
+            elif isinstance(st.session_state.filter_temp['date'], str):
+                current_selection = st.session_state.filter_temp['date']
         
-        date_range = st.sidebar.date_input(
-            "Select Date Range",
-            value=(default_start.date(), default_end.date()),
-            key="date_filter"
+        # Find index of current selection
+        try:
+            default_index = date_options.index(current_selection) if current_selection in date_options else 0
+        except:
+            default_index = 0
+        
+        selected_date_str = st.sidebar.selectbox(
+            "Select Date",
+            options=date_options,
+            index=default_index,
+            key="date_dropdown_filter"
         )
         
-        if isinstance(date_range, tuple) and len(date_range) == 2:
-            st.session_state.filter_temp['date'] = [str(date_range[0]), str(date_range[1])]
-        elif isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-            st.session_state.filter_temp['date'] = [str(date_range[0]), str(date_range[1])]
-        else:
+        if selected_date_str == 'All Dates':
             st.session_state.filter_temp['date'] = None
+        else:
+            # Set as date range (single date as both start and end)
+            st.session_state.filter_temp['date'] = [selected_date_str, selected_date_str]
     else:
+        st.sidebar.info("No date data available")
         st.session_state.filter_temp['date'] = None
     
     # Test group filter
@@ -1070,13 +1095,17 @@ def main():
     )
     st.session_state.filter_temp['test_group'] = selected_test_groups
     
-    # Load initial data to get filter options
-    with st.spinner("Loading data from BigQuery..."):
-        initial_df = load_data(
-            client,
-            date_filter=st.session_state.filter_temp['date'],
-            test_group_filter=st.session_state.filter_temp['test_group']
-        )
+    # Load initial data to get filter options (use the dates we already loaded)
+    initial_df = initial_df_for_dates.copy() if len(initial_df_for_dates) > 0 else pd.DataFrame()
+    
+    # Apply date filter if set
+    if st.session_state.filter_temp['date'] and len(initial_df) > 0 and 'date' in initial_df.columns:
+        date_filter = st.session_state.filter_temp['date']
+        if isinstance(date_filter, list) and len(date_filter) == 2:
+            initial_df = initial_df[
+                (initial_df['date'] >= pd.to_datetime(date_filter[0])) & 
+                (initial_df['date'] <= pd.to_datetime(date_filter[1]))
+            ]
     
     if len(initial_df) == 0:
         st.warning("No data found in the table. Please check your BigQuery connection and table.")
