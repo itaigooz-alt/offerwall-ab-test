@@ -1374,6 +1374,44 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
+    # Sidebar: Data summary with modern cards (moved up)
+    st.sidebar.markdown("### 📊 Data Summary")
+    if len(initial_df_for_dates) > 0:
+        st.sidebar.markdown(f"""
+        <div style="background-color: #e7f3ff; 
+                    padding: 0.75rem; 
+                    border-radius: 8px; 
+                    border-left: 4px solid #1f77b4;
+                    margin-bottom: 0.5rem;">
+            <p style="margin: 0; font-weight: 600; color: #1e1e1e; font-size: 0.9rem;">Total Rows</p>
+            <p style="margin: 0.25rem 0 0 0; font-size: 1.3rem; color: #1f77b4; font-weight: 700;">
+                {len(initial_df_for_dates):,}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if 'date' in initial_df_for_dates.columns:
+            date_min = initial_df_for_dates['date'].min()
+            date_max = initial_df_for_dates['date'].max()
+            if pd.notna(date_min) and pd.notna(date_max):
+                date_min_str = date_min.date() if hasattr(date_min, 'date') else str(date_min)
+                date_max_str = date_max.date() if hasattr(date_max, 'date') else str(date_max)
+                st.sidebar.markdown(f"""
+                <div style="background-color: #fff3cd; 
+                            padding: 0.75rem; 
+                            border-radius: 8px; 
+                            border-left: 4px solid #ffc107;">
+                    <p style="margin: 0; font-weight: 600; color: #1e1e1e; font-size: 0.9rem;">Date Range</p>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #856404;">
+                        {date_min_str} to {date_max_str}
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.sidebar.info("No data available")
+    
+    st.sidebar.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
+    
     # Dimension selector (moved above filters)
     if len(initial_df_for_dates) > 0:
         st.sidebar.markdown("### 🔀 Dimension Selector")
@@ -1584,38 +1622,6 @@ def main():
     # Ensure date column is datetime
     if 'date' in df.columns:
         df['date'] = pd.to_datetime(df['date'])
-    
-    # Sidebar: Data summary with modern cards
-    st.sidebar.markdown("<hr style='margin: 0.75rem 0;'>", unsafe_allow_html=True)
-    st.sidebar.markdown("### 📊 Data Summary")
-    if len(df) > 0:
-        st.sidebar.markdown(f"""
-        <div style="background-color: #e7f3ff; 
-                    padding: 0.75rem; 
-                    border-radius: 8px; 
-                    border-left: 4px solid #1f77b4;
-                    margin-bottom: 0.5rem;">
-            <p style="margin: 0; font-weight: 600; color: #1e1e1e; font-size: 0.9rem;">Total Rows</p>
-            <p style="margin: 0.25rem 0 0 0; font-size: 1.3rem; color: #1f77b4; font-weight: 700;">
-                {len(df):,}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if 'date' in df.columns:
-            date_min = df['date'].min().date()
-            date_max = df['date'].max().date()
-            st.sidebar.markdown(f"""
-            <div style="background-color: #fff3cd; 
-                        padding: 0.75rem; 
-                        border-radius: 8px; 
-                        border-left: 4px solid #ffc107;">
-                <p style="margin: 0; font-weight: 600; color: #1e1e1e; font-size: 0.9rem;">Date Range</p>
-                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #856404;">
-                    {date_min} to {date_max}
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
     
     # Get dimension from session state (set earlier)
     if 'selected_dimension' in st.session_state:
